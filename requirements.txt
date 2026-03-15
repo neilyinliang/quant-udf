@@ -1,0 +1,4 @@
+fastapi>=0.111
+uvicorn>=0.23
+httpx>=0.26
+gm>=3.0

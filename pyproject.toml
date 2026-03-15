@@ -1,0 +1,23 @@
+[project]
+name = "quant-udf"
+version = "0.1.0"
+description = "A simple TradingView UDF (Universal Data Feed) service built with a 掘金 SDK backend."
+authors = [
+  {name = "quant-udf"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.dependencies]
+fastapi = "^0.111"
+uvicorn = "^0.23"
+httpx = "^0.26"
+gm = "^3.0"
+
+[project.optional-dependencies]
+# If you have an official 掘金 SDK python package, install it here.
+# Example: juejin-sdk = "^1.0"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
