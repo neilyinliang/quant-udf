@@ -52,17 +52,30 @@ python -m app
 | 变量 | 含义 | 是否必需 |
 |------|------|---------|
 | `GM_TOKEN` | 掘金 SDK 认证 Token | ✅ 必需 |
-| `GM_SERV_ADDR` | 终端服务地址（例如 `tcp://host:port`） | 可选 |
-| `GM_SERV_ADDR_V5` / `GM_ORG_CODE` / `GM_SITE_ID` | v5 版自定义服务地址配置 | 可选 |
 
 例如：
 
 ```bash
 export GM_TOKEN="your-token-here"
-export GM_SERV_ADDR="tcp://your-server:port"
 ```
 
-> ⚠️ 未配置 `GM_TOKEN` 时服务仍会启动，但会返回模拟（stub）数据，无法用于真实行情。
+### 默认配置文件（仅 GM_TOKEN）
+
+当环境变量 `GM_TOKEN` 未设置时，服务会按顺序读取以下默认配置文件中的 `GM_TOKEN`：
+
+1. `gm_config.json`（项目根目录）
+2. `config/gm_config.json`
+
+示例内容：
+
+```json
+{
+  "GM_TOKEN": "your-token-here"
+}
+```
+
+> 读取优先级：**环境变量 `GM_TOKEN` > 默认配置文件中的 `GM_TOKEN`**。  
+> ⚠️ 如果两者都没有 `GM_TOKEN`，服务仍会启动，但会返回模拟（stub）数据，无法用于真实行情。
 
 ---
 
@@ -103,7 +116,7 @@ const datafeedUrl = "http://localhost:8000";
 - 如返回 `GM_TOKEN is not set`，说明环境变量未生效
 - 如果 `history` 返回 `s=error`，请检查：
   - `GM_TOKEN` 是否有效
-  - `GM_SERV_ADDR` 是否正确（是否需要指定内部服务地址）
+  - `GM_TOKEN` 是否已通过环境变量或默认配置文件正确加载
 
 ---
 

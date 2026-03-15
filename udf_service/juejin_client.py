@@ -1,19 +1,21 @@
-"""A thin adapter around the 官方掘金 SDK (`gm`) to provide market data for the UDF server.
+"""A thin adapter around 掘金 SDK (`gm`) to provide market data for the UDF server.
 
-Environment variables:
-- GM_TOKEN: required, 掘金 SDK token.
-- GM_SERV_ADDR: optional, 终端服务地址 (例如 tcp://host:port).
-- GM_SERV_ADDR_V5 / GM_ORG_CODE / GM_SITE_ID: optional alternative address configuration.
+GM token resolution priority:
+1) Environment variable: GM_TOKEN
+2) Default config file (JSON): ./gm_config.json
+3) Default config file (JSON): ./config/gm_config.json
 
 If no token is configured, the adapter falls back to stub responses so the UDF service stays responsive.
 """
 
 from __future__ import annotations
 
-import os
+import json
 import logging
+import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import List, Optional
 
 import gm.api as gm_api
 from gm.api import query
@@ -21,8 +23,51 @@ from gm.api._errors import GmError
 
 from .models import HistoryResponse, SymbolInfo
 
-
 logger = logging.getLogger(__name__)
+
+_DEFAULT_GM_CONFIG_PATHS = (
+    Path.cwd() / "gm_config.json",
+    Path.cwd() / "config" / "gm_config.json",
+)
+
+
+def _load_gm_token_from_default_config() -> Optional[str]:
+    """Load GM_TOKEN from default config files if present."""
+    for path in _DEFAULT_GM_CONFIG_PATHS:
+        if not path.exists():
+            continue
+
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning("Failed to parse GM config file %s: %s", path, e)
+            return None
+
+        if not isinstance(raw, dict):
+            logger.warning("GM config file is not a JSON object: %s", path)
+            return None
+
+        token = raw.get("GM_TOKEN")
+        if token is None:
+            logger.warning("GM_TOKEN not found in config file: %s", path)
+            return None
+
+        token_str = str(token).strip()
+        if not token_str:
+            logger.warning("GM_TOKEN is empty in config file: %s", path)
+            return None
+
+        return token_str
+
+    return None
+
+
+def _get_gm_token() -> Optional[str]:
+    """Get GM_TOKEN from env first, then default config files."""
+    token = os.getenv("GM_TOKEN")
+    if token and token.strip():
+        return token.strip()
+    return _load_gm_token_from_default_config()
 
 
 def _resolution_to_gm_frequency(resolution: str) -> Optional[str]:
@@ -36,36 +81,38 @@ def _resolution_to_gm_frequency(resolution: str) -> Optional[str]:
     return None
 
 
+def _resolution_to_seconds(resolution: str) -> Optional[int]:
+    """Convert TradingView resolution strings to seconds."""
+    if resolution.isdigit():
+        return int(resolution) * 60
+    if resolution == "D":
+        return 24 * 60 * 60
+    if resolution == "W":
+        return 7 * 24 * 60 * 60
+    return None
+
+
 class JuejinClient:
     """Client that talks to 掘金 SDK and returns data in TradingView UDF format."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._configured = False
         self._init_gm_sdk()
 
     def _init_gm_sdk(self) -> None:
-        token = os.getenv("GM_TOKEN")
+        token = _get_gm_token()
         if not token:
-            logger.warning("GM_TOKEN is not set; UDF service will return stub data.")
+            logger.warning(
+                "GM_TOKEN is not set in env or default config files; "
+                "UDF service will return stub data."
+            )
             return
 
-        serv_addr = os.getenv("GM_SERV_ADDR")
-        serv_addr_v5 = os.getenv("GM_SERV_ADDR_V5")
-        org_code = os.getenv("GM_ORG_CODE")
-        site_id = os.getenv("GM_SITE_ID")
-
         try:
-            # 必须先设置token
             gm_api.set_token(token)
-
-            if serv_addr:
-                gm_api.set_serv_addr(serv_addr)
-            elif serv_addr_v5 and org_code and site_id:
-                gm_api.set_serv_addr_v5(serv_addr_v5, org_code, site_id)
-
             self._configured = True
         except Exception as e:
-            logger.warning("Failed to configure gm SDK: %s", e)
+            logger.warning("Failed to configure gm SDK with GM_TOKEN: %s", e)
 
     def symbols(self) -> List[SymbolInfo]:
         """Return available symbols."""
@@ -88,20 +135,20 @@ class JuejinClient:
             if getattr(df, "empty", True):
                 return []
 
-            symbols: List[SymbolInfo] = []
+            result: List[SymbolInfo] = []
             for row in df.to_dict(orient="records"):
                 symbol = row.get("symbol")
                 if not symbol:
                     continue
+
                 name = row.get("name") or symbol
-                ticker = row.get("symbol")
                 sec_type = row.get("sec_type") or "stock"
 
-                symbols.append(
+                result.append(
                     SymbolInfo(
                         name=symbol,
                         full_name=name,
-                        ticker=ticker,
+                        ticker=symbol,
                         description=str(row.get("name", "")),
                         type=str(sec_type),
                         session=str(row.get("exchange", "")) or "0900-1700",
@@ -109,7 +156,7 @@ class JuejinClient:
                     )
                 )
 
-            return symbols
+            return result
         except Exception as e:
             logger.warning("Failed to fetch symbols from gm SDK: %s", e)
             return []
@@ -130,10 +177,16 @@ class JuejinClient:
 
         frequency = _resolution_to_gm_frequency(resolution)
         if not frequency:
-            return HistoryResponse(s="error", t=None, o=None, h=None, l=None, c=None, v=None)
+            return HistoryResponse(
+                s="error", t=None, o=None, h=None, l=None, c=None, v=None
+            )
 
-        start_time = datetime.fromtimestamp(from_ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        end_time = datetime.fromtimestamp(to_ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        start_time = datetime.fromtimestamp(from_ts, tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        end_time = datetime.fromtimestamp(to_ts, tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         try:
             df = query.history(
@@ -146,13 +199,19 @@ class JuejinClient:
             )
         except GmError as e:
             logger.warning("gm SDK history query failed: %s", e)
-            return HistoryResponse(s="error", t=None, o=None, h=None, l=None, c=None, v=None)
+            return HistoryResponse(
+                s="error", t=None, o=None, h=None, l=None, c=None, v=None
+            )
         except Exception as e:
             logger.warning("Unexpected error querying gm history: %s", e)
-            return HistoryResponse(s="error", t=None, o=None, h=None, l=None, c=None, v=None)
+            return HistoryResponse(
+                s="error", t=None, o=None, h=None, l=None, c=None, v=None
+            )
 
         if getattr(df, "empty", True):
-            return HistoryResponse(s="no_data", t=None, o=None, h=None, l=None, c=None, v=None)
+            return HistoryResponse(
+                s="no_data", t=None, o=None, h=None, l=None, c=None, v=None
+            )
 
         # Ensure output is sorted by time
         if "eob" in df.columns:
@@ -172,7 +231,9 @@ class JuejinClient:
             h=df.get("high").astype(float).tolist() if "high" in df.columns else None,
             l=df.get("low").astype(float).tolist() if "low" in df.columns else None,
             c=df.get("close").astype(float).tolist() if "close" in df.columns else None,
-            v=df.get("volume").astype(float).tolist() if "volume" in df.columns else None,
+            v=df.get("volume").astype(float).tolist()
+            if "volume" in df.columns
+            else None,
         )
 
     def _stub_history(self, resolution: str) -> HistoryResponse:
@@ -180,33 +241,18 @@ class JuejinClient:
         now = datetime.now(timezone.utc).timestamp()
         interval_sec = _resolution_to_seconds(resolution)
         if interval_sec is None:
-            return HistoryResponse(s="error", t=None, o=None, h=None, l=None, c=None, v=None)
+            return HistoryResponse(
+                s="error", t=None, o=None, h=None, l=None, c=None, v=None
+            )
 
-        t = []
-        o = []
-        h = []
-        l = []
-        c = []
-        v = []
-
+        t, o, h, low_values, c, v = [], [], [], [], [], []
         for i in range(10):
             ts = int(now - (9 - i) * interval_sec)
             t.append(ts)
             o.append(100 + i)
             h.append(100 + i + 2)
-            l.append(100 + i - 2)
+            low_values.append(100 + i - 2)
             c.append(100 + i + 1)
             v.append(1000 + i * 10)
 
-        return HistoryResponse(s="ok", t=t, o=o, h=h, l=l, c=c, v=v)
-
-
-def _resolution_to_seconds(resolution: str) -> Optional[int]:
-    """Convert TradingView resolution strings to seconds."""
-    if resolution.isdigit():
-        return int(resolution) * 60
-    if resolution == "D":
-        return 24 * 60 * 60
-    if resolution == "W":
-        return 7 * 24 * 60 * 60
-    return None
+        return HistoryResponse(s="ok", t=t, o=o, h=h, l=low_values, c=c, v=v)
