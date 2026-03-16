@@ -3,13 +3,20 @@
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .juejin_client import JuejinClient
 from .models import HistoryResponse, SearchResult, SymbolInfo
 
-
 app = FastAPI(title="quant-udf")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 _client = JuejinClient()
 
 
@@ -34,9 +41,15 @@ def config() -> dict:
 
 
 @app.get("/symbols")
-def symbols(symbol: str = Query(..., description="Symbol identifier, e.g. BTC")) -> SymbolInfo:
+def symbols(
+    symbol: str = Query(..., description="Symbol identifier, e.g. BTC"),
+) -> SymbolInfo:
     """Return symbol information for TradingView."""
-    candidates = [s for s in _client.symbols() if s.ticker.upper() == symbol.upper() or s.name == symbol]
+    candidates = [
+        s
+        for s in _client.symbols()
+        if s.ticker.upper() == symbol.upper() or s.name == symbol
+    ]
     if not candidates:
         raise HTTPException(status_code=404, detail=f"Symbol not found: {symbol}")
     return candidates[0]
@@ -55,7 +68,11 @@ def search(
 
     query_lower = query.strip().lower()
     for s in symbols:
-        if query_lower in s.name.lower() or query_lower in s.full_name.lower() or query_lower in (s.ticker or "").lower():
+        if (
+            query_lower in s.name.lower()
+            or query_lower in s.full_name.lower()
+            or query_lower in (s.ticker or "").lower()
+        ):
             results.append(
                 SearchResult(
                     symbol=s.name,
@@ -75,10 +92,14 @@ def search(
 @app.get("/history")
 def history(
     symbol: str = Query(..., description="Symbol identifier"),
-    resolution: str = Query("D", description="Resolution (e.g. 1, 5, 15, 30, 60, D, W)"),
+    resolution: str = Query(
+        "D", description="Resolution (e.g. 1, 5, 15, 30, 60, D, W)"
+    ),
     _from: int = Query(..., alias="from", description="From timestamp (seconds)"),
     to: int = Query(..., description="To timestamp (seconds)"),
-    count_back: Optional[int] = Query(None, alias="countback", description="Number of bars to return"),
+    count_back: Optional[int] = Query(
+        None, alias="countback", description="Number of bars to return"
+    ),
 ) -> JSONResponse:
     """Fetch historical bars."""
     data: HistoryResponse = _client.get_history(symbol, resolution, _from, to)
