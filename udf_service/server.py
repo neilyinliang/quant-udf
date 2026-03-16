@@ -1,10 +1,11 @@
 """TradingView UDF server implementation."""
 
+import time as time_module
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from .juejin_client import JuejinClient
 from .models import HistoryResponse, SearchResult, SymbolInfo
@@ -79,7 +80,7 @@ def search(
                     symbol=s.name,
                     full_name=s.full_name,
                     description=s.description or "",
-                    exchange=s.session,
+                    exchange=s.exchange,
                     ticker=s.ticker,
                     type=s.type,
                 )
@@ -104,11 +105,32 @@ def history(
 ) -> JSONResponse:
     """Fetch historical bars."""
     data: HistoryResponse = _client.get_history(symbol, resolution, _from, to)
-    if data.s != "ok":
-        raise HTTPException(status_code=502, detail="Failed to fetch history data")
 
     # TradingView expects `s=ok|no_data|error` and all arrays of same length or null.
-    return JSONResponse(content=data.dict())
+    if data.s == "ok":
+        payload = data.dict()
+
+        # If countback is provided, trim OHLCV arrays to the latest N bars.
+        if count_back is not None and count_back > 0:
+            series_fields = ("t", "o", "h", "l", "c", "v")
+            lengths = [
+                len(payload[field])
+                for field in series_fields
+                if isinstance(payload.get(field), list)
+            ]
+            if lengths:
+                trim = min(max(1, int(count_back)), min(lengths))
+                for field in series_fields:
+                    values = payload.get(field)
+                    if isinstance(values, list):
+                        payload[field] = values[-trim:]
+
+        return JSONResponse(content=payload)
+
+    if data.s == "no_data":
+        return JSONResponse(content=data.dict())
+
+    raise HTTPException(status_code=502, detail="Failed to fetch history data")
 
 
 @app.websocket("/ws/realtime")
@@ -124,6 +146,6 @@ async def ws_realtime(websocket: WebSocket) -> None:
 
 
 @app.get("/time")
-def time() -> dict:
-    """Return server time (ms)."""
-    return {"unixtime": int(__import__("time").time())}
+def get_time() -> PlainTextResponse:
+    """Return server time as plain UNIX timestamp text (seconds)."""
+    return PlainTextResponse(str(int(time_module.time())))

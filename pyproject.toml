@@ -8,11 +8,12 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10"
 
-[project.dependencies]
-fastapi = "^0.111"
-uvicorn = "^0.23"
-httpx = "^0.26"
-gm = "^3.0"
+dependencies = [
+  "fastapi>=0.111,<1.0",
+  "uvicorn>=0.23,<1.0",
+  "httpx>=0.26,<1.0",
+  "gm>=3.0,<4.0",
+]
 
 [project.optional-dependencies]
 # If you have an official 掘金 SDK python package, install it here.

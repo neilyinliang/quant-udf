@@ -178,11 +178,12 @@ class JuejinClient:
             # Return stub symbol so TradingView can render something.
             return [
                 SymbolInfo(
-                    name="JQBTC",
-                    full_name="掘金-示例BTC",
-                    ticker="BTC",
-                    description="示例符号 (请设置 GM_TOKEN 并配置掘金 SDK)",
+                    name="STUB.JQBTC",
+                    full_name="STUB.JQBTC",
+                    ticker="STUB.JQBTC",
+                    description="[STUB] 示例符号 (请设置 GM_TOKEN 并配置掘金 SDK)",
                     type="crypto",
+                    exchange="STUB",
                     session="24x7",
                     timezone="UTC",
                 )
@@ -201,15 +202,25 @@ class JuejinClient:
 
                 name = row.get("name") or symbol
                 sec_type = row.get("sec_type") or "stock"
+                exchange = str(row.get("exchange", "")).strip()
+                session = (
+                    str(row.get("trade_time", "")).strip()
+                    or str(row.get("session", "")).strip()
+                    or "0900-1700"
+                )
+                description = str(row.get("name", "")).strip()
+                if exchange:
+                    description = f"[{exchange}] {description}".strip()
 
                 result.append(
                     SymbolInfo(
                         name=symbol,
                         full_name=name,
                         ticker=symbol,
-                        description=str(row.get("name", "")),
+                        description=description,
                         type=str(sec_type),
-                        session=str(row.get("exchange", "")) or "0900-1700",
+                        exchange=exchange,
+                        session=session,
                         timezone="Asia/Shanghai",
                     )
                 )

@@ -1,8 +1,7 @@
-from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Resolution(str, Enum):
@@ -25,9 +24,20 @@ class SymbolInfo(BaseModel):
     ticker: str
     description: Optional[str] = None
     type: str = "stock"
+    exchange: str = ""
     session: str = "0900-1700"
     timezone: str = "Asia/Shanghai"
-    supported_resolutions: List[str] = [Resolution.MINUTE, Resolution.FIVE, Resolution.FIFTEEN, Resolution.THIRTY, Resolution.HOUR, Resolution.DAY, Resolution.WEEK]
+    supported_resolutions: List[str] = Field(
+        default_factory=lambda: [
+            Resolution.MINUTE.value,
+            Resolution.FIVE.value,
+            Resolution.FIFTEEN.value,
+            Resolution.THIRTY.value,
+            Resolution.HOUR.value,
+            Resolution.DAY.value,
+            Resolution.WEEK.value,
+        ]
+    )
     has_intraday: bool = True
     has_daily: bool = True
     has_no_volume: bool = False
@@ -38,7 +48,7 @@ class HistoryResponse(BaseModel):
     t: Optional[List[int]]
     o: Optional[List[float]]
     h: Optional[List[float]]
-    l: Optional[List[float]]
+    l: Optional[List[float]]  # noqa: E741 - UDF protocol field name
     c: Optional[List[float]]
     v: Optional[List[float]]
     next_time: Optional[int] = None
