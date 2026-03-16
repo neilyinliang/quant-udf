@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -92,6 +93,19 @@ def _resolution_to_seconds(resolution: str) -> Optional[int]:
     return None
 
 
+def _series_to_unix_seconds(series) -> List[int]:
+    """Convert numeric/datetime pandas series to UNIX seconds."""
+    dtype_str = str(series.dtype)
+    if dtype_str.startswith("datetime64"):
+        return (series.astype("int64") // 1_000_000_000).astype(int).tolist()
+    return series.astype(int).tolist()
+
+
+def _symbol_has_digit(symbol: str) -> bool:
+    """Check if symbol contains any digit."""
+    return bool(re.search(r"\d", symbol or ""))
+
+
 class JuejinClient:
     """Client that talks to 掘金 SDK and returns data in TradingView UDF format."""
 
@@ -113,6 +127,50 @@ class JuejinClient:
             self._configured = True
         except Exception as e:
             logger.warning("Failed to configure gm SDK with GM_TOKEN: %s", e)
+
+    def _resolve_main_contract_symbol(self, symbol: str) -> str:
+        """Resolve non-numeric futures symbol to current main contract symbol."""
+        if _symbol_has_digit(symbol):
+            return symbol
+
+        try:
+            contracts = gm_api.fut_get_continuous_contracts(csymbol=symbol)
+        except Exception as e:
+            logger.warning(
+                "Failed to resolve continuous contract for %s, fallback to original symbol: %s",
+                symbol,
+                e,
+            )
+            return symbol
+
+        if not contracts:
+            logger.warning(
+                "No continuous contract returned for %s, fallback to original symbol",
+                symbol,
+            )
+            return symbol
+
+        first = contracts[0]
+        resolved_symbol = (
+            first.get("symbol")
+            if isinstance(first, dict)
+            else getattr(first, "symbol", None)
+        )
+        if isinstance(resolved_symbol, str) and resolved_symbol.strip():
+            mapped = resolved_symbol.strip()
+            if mapped != symbol:
+                logger.info(
+                    "Resolved main contract symbol: %s -> %s",
+                    symbol,
+                    mapped,
+                )
+            return mapped
+
+        logger.warning(
+            "Continuous contract payload missing `symbol` for %s, fallback to original symbol",
+            symbol,
+        )
+        return symbol
 
     def symbols(self) -> List[SymbolInfo]:
         """Return available symbols."""
@@ -188,9 +246,11 @@ class JuejinClient:
             "%Y-%m-%d %H:%M:%S"
         )
 
+        resolved_symbol = self._resolve_main_contract_symbol(symbol)
+
         try:
             df = query.history(
-                symbol,
+                resolved_symbol,
                 frequency,
                 start_time,
                 end_time,
@@ -216,10 +276,10 @@ class JuejinClient:
         # Ensure output is sorted by time
         if "eob" in df.columns:
             df = df.sort_values(by="eob")
-            t_values = df["eob"].astype(int).tolist()
+            t_values = _series_to_unix_seconds(df["eob"])
         elif "timestamp" in df.columns:
             df = df.sort_values(by="timestamp")
-            t_values = df["timestamp"].astype(int).tolist()
+            t_values = _series_to_unix_seconds(df["timestamp"])
         else:
             # Fallback: use row indices
             t_values = list(range(len(df)))
