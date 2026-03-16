@@ -92,6 +92,36 @@ const datafeedUrl = "http://localhost:8000";
 - `/config`：获取支持的分辨率等能力
 - `/symbols`：查询标的元信息
 - `/history`：拉取历史 K 线
+- `/time`：获取服务器时间
+
+### 实时数据（WebSocket）
+
+本项目提供 WebSocket 推送接口：
+
+- `ws://localhost:8000/ws/realtime`
+
+客户端消息协议（JSON）：
+
+- 订阅：
+  `{"op":"subscribe","symbol":"DCE.l2605","frequency":"60s","count":2}`
+- 取消订阅：
+  `{"op":"unsubscribe","symbol":"DCE.l2605","frequency":"60s","count":2}`
+- 心跳：
+  `{"op":"ping"}`
+
+> `frequency` 支持 bar 周期（如 `30s`、`60s`、`1d`），不支持 `tick`。
+
+服务端推送消息（JSON）：
+
+- `{"type":"hello", ...}`：连接成功欢迎消息
+- `{"type":"ack", ...}`：订阅/退订确认
+- `{"type":"worker_ready", ...}`：实时 worker 就绪
+- `{"type":"worker_ack", ...}`：worker 侧订阅/退订确认
+- `{"type":"bar", "symbol":"DCE.l2605", "resolved_symbol":"DCE.l2605", "frequency":"60s", "data":{...}, "ts":...}`
+- `{"type":"error", "message":"..."}`：错误通知
+
+> 说明：当订阅 `DCE.l` 这类不含数字的主符号时，服务端会先解析为当前主力合约，再基于掘金订阅推送实时 `bar` 数据。  
+> 静态测试页 `chart_test.html` 的 WS 频率选项为：`30s`、`60s`、`1d`。
 
 ---
 

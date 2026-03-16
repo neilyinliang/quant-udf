@@ -2,12 +2,13 @@
 
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .juejin_client import JuejinClient
 from .models import HistoryResponse, SearchResult, SymbolInfo
+from .realtime_ws import realtime_hub
 
 app = FastAPI(title="quant-udf")
 app.add_middleware(
@@ -108,6 +109,18 @@ def history(
 
     # TradingView expects `s=ok|no_data|error` and all arrays of same length or null.
     return JSONResponse(content=data.dict())
+
+
+@app.websocket("/ws/realtime")
+async def ws_realtime(websocket: WebSocket) -> None:
+    """WebSocket realtime push endpoint.
+
+    Protocol:
+    - subscribe: {"op":"subscribe","symbol":"DCE.l2605","frequency":"60s","count":2}
+    - unsubscribe: {"op":"unsubscribe","symbol":"DCE.l2605","frequency":"60s","count":2}
+    - ping: {"op":"ping"}
+    """
+    await realtime_hub.websocket_handler(websocket)
 
 
 @app.get("/time")

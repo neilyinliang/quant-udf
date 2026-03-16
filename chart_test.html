@@ -1,294 +1,613 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UDF Chart Test</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-    }
-    .wrap {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: end;
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    label {
-      font-size: 12px;
-      color: #94a3b8;
-    }
-    input, select, button {
-      height: 34px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      background: #0b1220;
-      color: #e2e8f0;
-      padding: 0 10px;
-      outline: none;
-    }
-    button {
-      cursor: pointer;
-      background: #1d4ed8;
-      border-color: #1d4ed8;
-      font-weight: 600;
-    }
-    button:hover {
-      background: #1e40af;
-    }
-    #chart {
-      width: 100%;
-      height: 620px;
-      border: 1px solid #1f2937;
-      border-radius: 10px;
-      overflow: hidden;
-      background: #020617;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #cbd5e1;
-      white-space: pre-wrap;
-      line-height: 1.5;
-    }
-    .hint {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #94a3b8;
-    }
-    code {
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 6px;
-      padding: 2px 6px;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h2 style="margin: 0 0 12px 0;">TradingView 图表测试页（静态）</h2>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>UDF Chart Test</title>
+        <style>
+            body {
+                margin: 0;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Helvetica, Arial, "PingFang SC", "Microsoft YaHei",
+                    sans-serif;
+                background: #0f172a;
+                color: #e2e8f0;
+            }
+            .wrap {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 16px;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: end;
+                background: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            .field {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            label {
+                font-size: 12px;
+                color: #94a3b8;
+            }
+            input,
+            select,
+            button {
+                height: 34px;
+                border-radius: 8px;
+                border: 1px solid #334155;
+                background: #0b1220;
+                color: #e2e8f0;
+                padding: 0 10px;
+                outline: none;
+            }
+            button {
+                cursor: pointer;
+                background: #1d4ed8;
+                border-color: #1d4ed8;
+                font-weight: 600;
+            }
+            button:hover {
+                background: #1e40af;
+            }
+            #chart {
+                width: 100%;
+                height: 620px;
+                border: 1px solid #1f2937;
+                border-radius: 10px;
+                overflow: hidden;
+                background: #020617;
+            }
+            .status {
+                margin-top: 10px;
+                font-size: 13px;
+                color: #cbd5e1;
+                white-space: pre-wrap;
+                line-height: 1.5;
+            }
+            .hint {
+                margin-top: 8px;
+                font-size: 12px;
+                color: #94a3b8;
+            }
+            .realtime {
+                margin-top: 14px;
+                background: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 10px;
+                padding: 12px;
+            }
+            .realtime h3 {
+                margin: 0 0 10px 0;
+                font-size: 16px;
+            }
+            .rt-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: end;
+                margin-bottom: 10px;
+            }
+            .rt-status {
+                font-size: 13px;
+                color: #cbd5e1;
+                margin-bottom: 8px;
+                white-space: pre-wrap;
+            }
+            .rt-log {
+                height: 220px;
+                overflow: auto;
+                background: #020617;
+                border: 1px solid #1f2937;
+                border-radius: 8px;
+                padding: 10px;
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    "Liberation Mono", "Courier New", monospace;
+                font-size: 12px;
+                line-height: 1.45;
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+            .pill {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 999px;
+                border: 1px solid #334155;
+                background: #0b1220;
+                font-size: 12px;
+                color: #cbd5e1;
+            }
+            code {
+                background: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 6px;
+                padding: 2px 6px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h2 style="margin: 0 0 12px 0">TradingView 图表测试页（静态）</h2>
 
-    <form id="toolbar" class="toolbar">
-      <div class="field">
-        <label for="symbol">symbol</label>
-        <input id="symbol" name="symbol" />
-      </div>
+            <form id="toolbar" class="toolbar">
+                <div class="field">
+                    <label for="symbol">symbol</label>
+                    <input id="symbol" name="symbol" />
+                </div>
 
-      <div class="field">
-        <label for="resolution">resolution</label>
-        <select id="resolution" name="resolution">
-          <option value="1">1</option>
-          <option value="5">5</option>
-          <option value="15">15</option>
-          <option value="30">30</option>
-          <option value="60">60</option>
-          <option value="D">D</option>
-          <option value="W">W</option>
-        </select>
-      </div>
+                <div class="field">
+                    <label for="resolution">resolution</label>
+                    <select id="resolution" name="resolution">
+                        <option value="1">1</option>
+                        <option value="5">5</option>
+                        <option value="15">15</option>
+                        <option value="30">30</option>
+                        <option value="60">60</option>
+                        <option value="D">D</option>
+                        <option value="W">W</option>
+                    </select>
+                </div>
 
-      <div class="field">
-        <label for="days">days</label>
-        <input id="days" type="number" min="1" max="2000" name="days" />
-      </div>
+                <div class="field">
+                    <label for="days">days</label>
+                    <input
+                        id="days"
+                        type="number"
+                        min="1"
+                        max="2000"
+                        name="days"
+                    />
+                </div>
 
-      <div class="field">
-        <button type="submit">加载图表</button>
-      </div>
-    </form>
+                <div class="field">
+                    <button type="submit">加载图表</button>
+                </div>
+            </form>
 
-    <div id="chart"></div>
-    <div id="status" class="status">初始化中...</div>
-    <div class="hint">
-      后端地址已固定：<code>http://127.0.0.1:8000</code>（调用 <code>/history</code>）
-    </div>
-  </div>
+            <div id="chart"></div>
+            <div id="status" class="status">初始化中...</div>
+            <div class="hint">
+                后端地址已固定：<code>http://127.0.0.1:8000</code>（调用
+                <code>/history</code>）
+            </div>
 
-  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script>
-    const UDF_BASE = "http://127.0.0.1:8000";
-    const statusEl = document.getElementById("status");
-    const chartEl = document.getElementById("chart");
-    const toolbar = document.getElementById("toolbar");
+            <section class="realtime">
+                <h3>WebSocket 实时订阅测试</h3>
+                <div class="rt-toolbar">
+                    <div class="field">
+                        <label for="wsFrequency">ws frequency</label>
+                        <select id="wsFrequency">
+                            <option value="30s">30s</option>
+                            <option value="60s">60s</option>
+                            <option value="1d">1d</option>
+                        </select>
+                    </div>
 
-    let chart = null;
-    let candle = null;
-    let resizeObserver = null;
+                    <div class="field">
+                        <label for="wsCount">ws count</label>
+                        <input
+                            id="wsCount"
+                            type="number"
+                            min="1"
+                            max="200"
+                            value="2"
+                        />
+                    </div>
 
-    function setStatus(msg) {
-      statusEl.textContent = msg;
-    }
+                    <div class="field">
+                        <label for="autoResub">auto resubscribe</label>
+                        <select id="autoResub">
+                            <option value="1" selected>on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </div>
 
-    function getParams() {
-      const sp = new URLSearchParams(location.search);
-      return {
-        symbol: sp.get("symbol") || "DCE.l",
-        resolution: sp.get("resolution") || "D",
-        days: Number(sp.get("days") || "180"),
-      };
-    }
+                    <div class="field">
+                        <button id="btnWsConnect" type="button">连接WS</button>
+                    </div>
+                    <div class="field">
+                        <button id="btnWsDisconnect" type="button">
+                            断开WS
+                        </button>
+                    </div>
+                    <div class="field">
+                        <button id="btnWsSubscribe" type="button">订阅</button>
+                    </div>
+                    <div class="field">
+                        <button id="btnWsUnsubscribe" type="button">
+                            退订
+                        </button>
+                    </div>
+                    <div class="field">
+                        <button id="btnWsPing" type="button">Ping</button>
+                    </div>
+                    <div class="field">
+                        <button id="btnWsClear" type="button">清空日志</button>
+                    </div>
+                </div>
 
-    function setInputs({ symbol, resolution, days }) {
-      document.getElementById("symbol").value = symbol;
-      document.getElementById("resolution").value = resolution;
-      document.getElementById("days").value = String(days);
-    }
+                <div id="wsStatus" class="rt-status">WS 状态：未连接</div>
+                <div class="hint">
+                    WS 地址：<code>ws://127.0.0.1:8000/ws/realtime</code>
+                    <span class="pill">tick/bar push</span>
+                    <span id="wsLastPrice" class="pill">last: --</span>
+                </div>
+                <div id="wsLog" class="rt-log"></div>
+            </section>
+        </div>
 
-    function buildHistoryUrl({ symbol, resolution, days }) {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const fromSec = nowSec - Math.max(1, days) * 86400;
-      const params = new URLSearchParams({
-        symbol,
-        resolution,
-        from: String(fromSec),
-        to: String(nowSec),
-      });
-      return `${UDF_BASE}/history?${params.toString()}`;
-    }
+        <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+        <script>
+            const UDF_BASE = "http://127.0.0.1:8000";
+            const WS_BASE = UDF_BASE.replace(/^http/i, "ws");
+            const WS_URL = `${WS_BASE}/ws/realtime`;
 
-    function normalizeBars(payload) {
-      if (payload.s === "no_data") return [];
-      if (payload.s !== "ok") {
-        throw new Error(`history 返回错误: ${JSON.stringify(payload)}`);
-      }
+            const statusEl = document.getElementById("status");
+            const chartEl = document.getElementById("chart");
+            const toolbar = document.getElementById("toolbar");
 
-      const t = payload.t || [];
-      const o = payload.o || [];
-      const h = payload.h || [];
-      const l = payload.l || [];
-      const c = payload.c || [];
-      const n = Math.min(t.length, o.length, h.length, l.length, c.length);
+            const wsStatusEl = document.getElementById("wsStatus");
+            const wsLogEl = document.getElementById("wsLog");
+            const wsLastPriceEl = document.getElementById("wsLastPrice");
+            const wsFrequencyEl = document.getElementById("wsFrequency");
+            const wsCountEl = document.getElementById("wsCount");
+            const autoResubEl = document.getElementById("autoResub");
 
-      const bars = [];
-      for (let i = 0; i < n; i++) {
-        bars.push({
-          time: Number(t[i]),
-          open: Number(o[i]),
-          high: Number(h[i]),
-          low: Number(l[i]),
-          close: Number(c[i]),
-        });
-      }
-      return bars;
-    }
+            const btnWsConnect = document.getElementById("btnWsConnect");
+            const btnWsDisconnect = document.getElementById("btnWsDisconnect");
+            const btnWsSubscribe = document.getElementById("btnWsSubscribe");
+            const btnWsUnsubscribe =
+                document.getElementById("btnWsUnsubscribe");
+            const btnWsPing = document.getElementById("btnWsPing");
+            const btnWsClear = document.getElementById("btnWsClear");
 
-    async function loadBars(opts) {
-      const url = buildHistoryUrl(opts);
-      setStatus(`请求中...\n${url}`);
-      const resp = await fetch(url);
-      const text = await resp.text();
+            let chart = null;
+            let candle = null;
+            let resizeObserver = null;
+            let ws = null;
+            let wsConnected = false;
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${text}`);
-      }
+            function setStatus(msg) {
+                statusEl.textContent = msg;
+            }
 
-      let payload;
-      try {
-        payload = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`返回不是 JSON：${text.slice(0, 300)}`);
-      }
-      return normalizeBars(payload);
-    }
+            function setWsStatus(msg) {
+                wsStatusEl.textContent = `WS 状态：${msg}`;
+            }
 
-    function ensureChart() {
-      if (!chart) {
-        chart = LightweightCharts.createChart(chartEl, {
-          layout: {
-            background: { color: "#020617" },
-            textColor: "#cbd5e1",
-          },
-          grid: {
-            vertLines: { color: "#1f2937" },
-            horzLines: { color: "#1f2937" },
-          },
-          rightPriceScale: {
-            borderColor: "#334155",
-          },
-          timeScale: {
-            borderColor: "#334155",
-            timeVisible: true,
-            secondsVisible: false,
-          },
-          localization: {
-            dateFormat: "yyyy-MM-dd",
-          },
-        });
+            function appendWsLog(message, payload = null) {
+                const ts = new Date().toLocaleTimeString();
+                let line = `[${ts}] ${message}`;
+                if (payload !== null) {
+                    try {
+                        line += ` ${JSON.stringify(payload)}`;
+                    } catch (e) {
+                        line += ` ${String(payload)}`;
+                    }
+                }
+                wsLogEl.textContent += (wsLogEl.textContent ? "\n" : "") + line;
+                wsLogEl.scrollTop = wsLogEl.scrollHeight;
+            }
 
-        candle = chart.addCandlestickSeries({
-          upColor: "#22c55e",
-          downColor: "#ef4444",
-          borderVisible: false,
-          wickUpColor: "#22c55e",
-          wickDownColor: "#ef4444",
-        });
+            function getParams() {
+                const sp = new URLSearchParams(location.search);
+                return {
+                    symbol: sp.get("symbol") || "DCE.l",
+                    resolution: sp.get("resolution") || "D",
+                    days: Number(sp.get("days") || "180"),
+                    wsFrequency: sp.get("wsFrequency") || "30s",
+                    wsCount: Number(sp.get("wsCount") || "2"),
+                    autoResub: sp.get("autoResub") || "1",
+                };
+            }
 
-        resizeObserver = new ResizeObserver(() => {
-          chart.applyOptions({
-            width: chartEl.clientWidth,
-            height: chartEl.clientHeight,
-          });
-        });
-        resizeObserver.observe(chartEl);
-      }
-    }
+            function setInputs({
+                symbol,
+                resolution,
+                days,
+                wsFrequency,
+                wsCount,
+                autoResub,
+            }) {
+                document.getElementById("symbol").value = symbol;
+                document.getElementById("resolution").value = resolution;
+                document.getElementById("days").value = String(days);
+                wsFrequencyEl.value = wsFrequency;
+                wsCountEl.value = String(wsCount);
+                autoResubEl.value = autoResub;
+            }
 
-    async function render() {
-      const opts = getParams();
-      setInputs(opts);
+            function currentWsSub() {
+                const symbol =
+                    document.getElementById("symbol").value.trim() || "DCE.l";
+                const frequency = wsFrequencyEl.value || "30s";
+                const count = Math.max(1, Number(wsCountEl.value || "2"));
+                return { symbol, frequency, count };
+            }
 
-      try {
-        ensureChart();
-        const bars = await loadBars(opts);
-        candle.setData(bars);
-        if (bars.length > 0) {
-          chart.timeScale().fitContent();
-          setStatus(
-            `已加载 ${bars.length} 根K线\n` +
-            `symbol=${opts.symbol} resolution=${opts.resolution}\n` +
-            `时间范围(秒): ${bars[0].time} ~ ${bars[bars.length - 1].time}`
-          );
-        } else {
-          setStatus(`无数据\nsymbol=${opts.symbol} resolution=${opts.resolution}`);
-        }
-      } catch (err) {
-        setStatus(`加载失败: ${err?.message || err}`);
-      }
-    }
+            function buildHistoryUrl({ symbol, resolution, days }) {
+                const nowSec = Math.floor(Date.now() / 1000);
+                const fromSec = nowSec - Math.max(1, days) * 86400;
+                const params = new URLSearchParams({
+                    symbol,
+                    resolution,
+                    from: String(fromSec),
+                    to: String(nowSec),
+                });
+                return `${UDF_BASE}/history?${params.toString()}`;
+            }
 
-    toolbar.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const symbol = document.getElementById("symbol").value.trim() || "DCE.l";
-      const resolution = document.getElementById("resolution").value;
-      const days = Number(document.getElementById("days").value || "180");
-      const sp = new URLSearchParams({
-        symbol,
-        resolution,
-        days: String(days),
-      });
-      history.replaceState(null, "", `${location.pathname}?${sp.toString()}`);
-      render();
-    });
+            function normalizeBars(payload) {
+                if (payload.s === "no_data") return [];
+                if (payload.s !== "ok") {
+                    throw new Error(
+                        `history 返回错误: ${JSON.stringify(payload)}`,
+                    );
+                }
 
-    render();
-  </script>
-</body>
+                const t = payload.t || [];
+                const o = payload.o || [];
+                const h = payload.h || [];
+                const l = payload.l || [];
+                const c = payload.c || [];
+                const n = Math.min(
+                    t.length,
+                    o.length,
+                    h.length,
+                    l.length,
+                    c.length,
+                );
+
+                const bars = [];
+                for (let i = 0; i < n; i++) {
+                    bars.push({
+                        time: Number(t[i]),
+                        open: Number(o[i]),
+                        high: Number(h[i]),
+                        low: Number(l[i]),
+                        close: Number(c[i]),
+                    });
+                }
+                return bars;
+            }
+
+            async function loadBars(opts) {
+                const url = buildHistoryUrl(opts);
+                setStatus(`请求中...\n${url}`);
+                const resp = await fetch(url);
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${text}`);
+                }
+
+                let payload;
+                try {
+                    payload = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`返回不是 JSON：${text.slice(0, 300)}`);
+                }
+                return normalizeBars(payload);
+            }
+
+            function ensureChart() {
+                if (!chart) {
+                    chart = LightweightCharts.createChart(chartEl, {
+                        layout: {
+                            background: { color: "#020617" },
+                            textColor: "#cbd5e1",
+                        },
+                        grid: {
+                            vertLines: { color: "#1f2937" },
+                            horzLines: { color: "#1f2937" },
+                        },
+                        rightPriceScale: {
+                            borderColor: "#334155",
+                        },
+                        timeScale: {
+                            borderColor: "#334155",
+                            timeVisible: true,
+                            secondsVisible: false,
+                        },
+                        localization: {
+                            dateFormat: "yyyy-MM-dd",
+                        },
+                    });
+
+                    candle = chart.addCandlestickSeries({
+                        upColor: "#22c55e",
+                        downColor: "#ef4444",
+                        borderVisible: false,
+                        wickUpColor: "#22c55e",
+                        wickDownColor: "#ef4444",
+                    });
+
+                    resizeObserver = new ResizeObserver(() => {
+                        chart.applyOptions({
+                            width: chartEl.clientWidth,
+                            height: chartEl.clientHeight,
+                        });
+                    });
+                    resizeObserver.observe(chartEl);
+                }
+            }
+
+            async function render() {
+                const opts = getParams();
+                setInputs(opts);
+
+                try {
+                    ensureChart();
+                    const bars = await loadBars(opts);
+                    candle.setData(bars);
+                    if (bars.length > 0) {
+                        chart.timeScale().fitContent();
+                        setStatus(
+                            `已加载 ${bars.length} 根K线\n` +
+                                `symbol=${opts.symbol} resolution=${opts.resolution}\n` +
+                                `时间范围(秒): ${bars[0].time} ~ ${bars[bars.length - 1].time}`,
+                        );
+                    } else {
+                        setStatus(
+                            `无数据\nsymbol=${opts.symbol} resolution=${opts.resolution}`,
+                        );
+                    }
+                } catch (err) {
+                    setStatus(`加载失败: ${err?.message || err}`);
+                }
+            }
+
+            function wsConnect() {
+                if (
+                    ws &&
+                    (ws.readyState === WebSocket.OPEN ||
+                        ws.readyState === WebSocket.CONNECTING)
+                ) {
+                    appendWsLog("WS 已连接/连接中，跳过重复连接");
+                    return;
+                }
+
+                setWsStatus(`连接中 (${WS_URL})`);
+                appendWsLog("WS connecting", { url: WS_URL });
+                ws = new WebSocket(WS_URL);
+
+                ws.onopen = () => {
+                    wsConnected = true;
+                    setWsStatus(`已连接 (${WS_URL})`);
+                    appendWsLog("WS open");
+                };
+
+                ws.onmessage = (ev) => {
+                    let msg;
+                    try {
+                        msg = JSON.parse(ev.data);
+                    } catch (e) {
+                        appendWsLog("WS raw", ev.data);
+                        return;
+                    }
+
+                    const t = msg?.type;
+                    if (t === "tick") {
+                        const lp =
+                            msg?.data?.price ?? msg?.data?.last_price ?? "--";
+                        wsLastPriceEl.textContent = `last: ${lp}`;
+                    } else if (t === "bar") {
+                        const c = msg?.data?.close ?? "--";
+                        wsLastPriceEl.textContent = `last: ${c}`;
+                    }
+
+                    appendWsLog(`WS ${t || "message"}`, msg);
+                };
+
+                ws.onerror = () => {
+                    appendWsLog("WS error");
+                };
+
+                ws.onclose = () => {
+                    wsConnected = false;
+                    setWsStatus("已断开");
+                    appendWsLog("WS close");
+                };
+            }
+
+            function wsDisconnect() {
+                if (!ws) {
+                    appendWsLog("WS 未连接");
+                    return;
+                }
+                ws.close();
+            }
+
+            function wsSend(obj) {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    appendWsLog("WS 未连接，无法发送", obj);
+                    return false;
+                }
+                ws.send(JSON.stringify(obj));
+                appendWsLog("WS send", obj);
+                return true;
+            }
+
+            function wsSubscribe() {
+                const sub = currentWsSub();
+                wsSend({
+                    op: "subscribe",
+                    symbol: sub.symbol,
+                    frequency: sub.frequency,
+                    count: sub.count,
+                });
+            }
+
+            function wsUnsubscribe() {
+                const sub = currentWsSub();
+                wsSend({
+                    op: "unsubscribe",
+                    symbol: sub.symbol,
+                    frequency: sub.frequency,
+                    count: sub.count,
+                });
+            }
+
+            function wsPing() {
+                wsSend({ op: "ping" });
+            }
+
+            toolbar.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const symbol =
+                    document.getElementById("symbol").value.trim() || "DCE.l";
+                const resolution = document.getElementById("resolution").value;
+                const days = Number(
+                    document.getElementById("days").value || "180",
+                );
+                const wsFrequency = wsFrequencyEl.value || "30s";
+                const wsCount = String(
+                    Math.max(1, Number(wsCountEl.value || "2")),
+                );
+                const autoResub = autoResubEl.value || "1";
+
+                const sp = new URLSearchParams({
+                    symbol,
+                    resolution,
+                    days: String(days),
+                    wsFrequency,
+                    wsCount,
+                    autoResub,
+                });
+                history.replaceState(
+                    null,
+                    "",
+                    `${location.pathname}?${sp.toString()}`,
+                );
+                render();
+
+                if (autoResub === "1" && wsConnected) {
+                    wsUnsubscribe();
+                    wsSubscribe();
+                }
+            });
+
+            btnWsConnect.addEventListener("click", wsConnect);
+            btnWsDisconnect.addEventListener("click", wsDisconnect);
+            btnWsSubscribe.addEventListener("click", wsSubscribe);
+            btnWsUnsubscribe.addEventListener("click", wsUnsubscribe);
+            btnWsPing.addEventListener("click", wsPing);
+            btnWsClear.addEventListener("click", () => {
+                wsLogEl.textContent = "";
+            });
+
+            setWsStatus("未连接");
+            render();
+        </script>
+    </body>
 </html>
